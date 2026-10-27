@@ -3,6 +3,7 @@ package com.yms.service;
 import com.yms.model.Delivery;
 import com.yms.model.TruckAssignment;
 import com.yms.model.Weighing;
+import com.yms.model.Wiegedaten;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -47,6 +48,7 @@ class KafkaProducerServiceTest {
     private static final String WEIGHING_IN_TOPIC = "test.weighing.in.topic";
     private static final String WEIGHING_OUT_TOPIC = "test.weighing.out.topic";
     private static final String TRUCK_ASSIGNMENT_TOPIC = "test.truck.assignment.topic";
+    private static final String WIEGEDATEN_TOPIC = "test.wiegedaten.topic";
 
     @BeforeEach
     void setUp() {
@@ -55,6 +57,7 @@ class KafkaProducerServiceTest {
         ReflectionTestUtils.setField(kafkaProducerService, "weighingInTopic", WEIGHING_IN_TOPIC);
         ReflectionTestUtils.setField(kafkaProducerService, "weighingOutTopic", WEIGHING_OUT_TOPIC);
         ReflectionTestUtils.setField(kafkaProducerService, "truckAssignmentTopic", TRUCK_ASSIGNMENT_TOPIC);
+        ReflectionTestUtils.setField(kafkaProducerService, "wiegedatenTopic", WIEGEDATEN_TOPIC);
     }
 
     private CompletableFuture<SendResult<String, Object>> createSuccessFuture(String topic) {
@@ -265,6 +268,35 @@ class KafkaProducerServiceTest {
                 .as("Der Key darf nicht null sein")
                 .isNotNull()
                 .isNotEmpty();
+    }
+
+    // ============== sendWiegedaten Tests ==============
+
+    @Test
+    @DisplayName("sendWiegedaten: Waegescheinnummer wird als Key gesendet")
+    void sendWiegedaten_shouldUseWaegescheinnummerAsKey() {
+        // Given
+        String expectedKey = "WS-2026-89412";
+        Wiegedaten wiegedaten = new Wiegedaten();
+        wiegedaten.setWaegescheinnummer(expectedKey);
+        wiegedaten.setErstgewichtMengeKilogramm(14200);
+        wiegedaten.setErstgewichtZeitpunkt(Instant.parse("2026-10-22T13:15:00Z"));
+        wiegedaten.setFahrzeugkennzeichen("EF-AB-1234");
+
+        when(kafkaTemplate.send(anyString(), anyString(), any()))
+                .thenReturn(createSuccessFuture(WIEGEDATEN_TOPIC));
+
+        // When
+        kafkaProducerService.sendWiegedaten(wiegedaten);
+
+        // Then
+        verify(kafkaTemplate).send(topicCaptor.capture(), keyCaptor.capture(), valueCaptor.capture());
+
+        assertThat(keyCaptor.getValue())
+                .as("Der Kafka-Key muss die Waegescheinnummer sein")
+                .isEqualTo(expectedKey);
+        assertThat(topicCaptor.getValue()).isEqualTo(WIEGEDATEN_TOPIC);
+        assertThat(valueCaptor.getValue()).isEqualTo(wiegedaten);
     }
 
     // ============== Alle Methoden - Konsistenz-Test ==============

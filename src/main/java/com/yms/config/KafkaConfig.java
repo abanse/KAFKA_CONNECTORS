@@ -22,6 +22,9 @@ public class KafkaConfig {
     @Value("${kafka.topics.weighing-out}")
     private String weighingOutTopic;
 
+    @Value("${kafka.topics.wiegedaten}")
+    private String wiegedatenTopic;
+
 
 
     @Bean
@@ -43,6 +46,14 @@ public class KafkaConfig {
     @Bean
     public NewTopic weighingOutTopic() {
         return TopicBuilder.name(weighingOutTopic)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic wiegedatenTopic() {
+        return TopicBuilder.name(wiegedatenTopic)
                 .partitions(3)
                 .replicas(1)
                 .build();

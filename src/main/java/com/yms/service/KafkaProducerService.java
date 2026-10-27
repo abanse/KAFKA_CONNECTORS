@@ -3,6 +3,7 @@ package com.yms.service;
 import com.yms.model.Delivery;
 import com.yms.model.TruckAssignment;
 import com.yms.model.Weighing;
+import com.yms.model.Wiegedaten;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,9 @@ public class KafkaProducerService {
 
     @Value("${kafka.topics.truck-assignment}")
     private String truckAssignmentTopic;
+
+    @Value("${kafka.topics.wiegedaten}")
+    private String wiegedatenTopic;
 
     /**
      * Sendet eine Lieferung an Kafka
@@ -114,6 +118,29 @@ public class KafkaProducerService {
                     } else {
                         log.error("Fehler beim Senden der LKW-Einweisung an Kafka: ymsReference={}", 
                                 assignment.getYmsReference(), ex);
+                    }
+                });
+    }
+
+    /**
+     * Sendet einen Wägeschein an Kafka.
+     * Key ist die Waegescheinnummer, damit Erst- und Zweitwägung sowie Korrekturen
+     * eines Wägescheins in der richtigen Reihenfolge auf derselben Partition landen.
+     */
+    public CompletableFuture<SendResult<String, Object>> sendWiegedaten(Wiegedaten wiegedaten) {
+        log.info("Sende Wiegedaten an Kafka - Waegescheinnummer: {}, Zweitverwogen: {}, Topic: {}",
+                wiegedaten.getWaegescheinnummer(), wiegedaten.isZweitverwogen(), wiegedatenTopic);
+
+        return kafkaTemplate.send(wiegedatenTopic, wiegedaten.getWaegescheinnummer(), wiegedaten)
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("Wiegedaten erfolgreich gesendet: Waegescheinnummer={}, Offset={}, Partition={}",
+                                wiegedaten.getWaegescheinnummer(),
+                                result.getRecordMetadata().offset(),
+                                result.getRecordMetadata().partition());
+                    } else {
+                        log.error("Fehler beim Senden der Wiegedaten: Waegescheinnummer={}",
+                                wiegedaten.getWaegescheinnummer(), ex);
                     }
                 });
     }

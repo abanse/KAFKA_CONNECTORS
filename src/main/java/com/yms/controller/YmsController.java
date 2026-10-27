@@ -4,6 +4,7 @@ import com.yms.model.Delivery;
 import com.yms.model.TruckAssignment;
 import com.yms.model.TruckAssignmentNotification;
 import com.yms.model.Weighing;
+import com.yms.model.Wiegedaten;
 import com.yms.service.DeliveryValidationService;
 import com.yms.service.KafkaProducerService;
 import com.yms.service.YmsRestClient;
@@ -123,6 +124,42 @@ public class YmsController {
     }
 
     /**
+     * POST /api/yms/wiegedaten - Empfängt einen Wägeschein (nach Erstellen oder jeder Änderung)
+     *
+     * Im Status "Erstverwogen" sind ZweitgewichtMengeKilogramm, ZweitgewichtZeitpunkt
+     * und NettogewichtMengeKilogramm leer.
+     */
+    @PostMapping("/wiegedaten")
+    public ResponseEntity<Map<String, Object>> receiveWiegedaten(@Valid @RequestBody Wiegedaten wiegedaten) {
+        log.info("Empfange Wiegedaten: Waegescheinnummer={}, Erstgewicht={} kg, Zweitgewicht={} kg",
+                wiegedaten.getWaegescheinnummer(),
+                wiegedaten.getErstgewichtMengeKilogramm(),
+                wiegedaten.getZweitgewichtMengeKilogramm());
+
+        try {
+            kafkaProducerService.sendWiegedaten(wiegedaten);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("message", "Wiegedaten erfolgreich an Kafka gesendet");
+            response.put("Waegescheinnummer", wiegedaten.getWaegescheinnummer());
+            response.put("waegestatus", wiegedaten.isZweitverwogen() ? "ZWEITVERWOGEN" : "ERSTVERWOGEN");
+            response.put("topic", "RHW.YMS.WIEGEDATEN");
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (Exception e) {
+            log.error("Fehler beim Verarbeiten der Wiegedaten", e);
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "Fehler beim Senden an Kafka: " + e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
      * POST /api/yms/truck-assignment/manual - Manuelle LKW-Einweisung
      * Sendet direkt an PAARI: http://localhost:8081/paari/assignments
      *
@@ -226,7 +263,8 @@ public class YmsController {
             "delivery", 
             "weighing-in", 
             "weighing-out", 
-            "truck-assignment"
+            "truck-assignment",
+            "wiegedaten"
         });
         
         boolean paariHealthy = ymsRestClient.checkYmsHealth();
@@ -248,6 +286,7 @@ public class YmsController {
         topics.put("weighing-in", "RHW.YMS.WEIGHING.IN");
         topics.put("weighing-out", "RHW.YMS.WEIGHING.OUT");
         topics.put("truck-assignment", "RHW.YMS.TRUCK.ASSIGNMENT");
+        topics.put("wiegedaten", "RHW.YMS.WIEGEDATEN");
         
         config.put("kafkaTopics", topics);
         config.put("consumerGroupId", "yms-truck-assignment-consumer");
