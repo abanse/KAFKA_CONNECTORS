@@ -1,0 +1,112 @@
+{
+  "info": {
+    "name": "YMS Kafka API",
+    "description": "Postman Collection für die YMS Kafka API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/yms/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "yms", "health"]
+        }
+      }
+    },
+    {
+      "name": "Lieferung erstellen",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ymsReference\": \"123456789\",\n  \"plannedDeliveryDate\": \"2025-11-03\",\n  \"plannedDeliveryTime\": \"10:30\",\n  \"plannedWeightKg\": 12500,\n  \"targetLocation\": \"S1\",\n  \"materialType\": \"1002003\",\n  \"supplier\": 987,\n  \"isWarehhouse\": 1,\n  \"warehouseInfo\": \"Außenlager\",\n  \"isExternalWarehouse\": 0,\n  \"externalWarehouseInfo\": \"\",\n  \"remark\": \"Bemerkungstext\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/yms/delivery",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "yms", "delivery"]
+        }
+      }
+    },
+    {
+      "name": "Eingangs-Wiegung",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ymsReference\": \"123456789\",\n  \"truckLicensePlate\": \"EF-AB 123\",\n  \"weightKg\": 12340,\n  \"registrationNumber\": 15,\n  \"weighingType\": 1,\n  \"timestamp\": \"2025-11-03T07:58:12Z\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/yms/weighing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "yms", "weighing"]
+        }
+      }
+    },
+    {
+      "name": "Ausgangs-Wiegung",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ymsReference\": \"123456789\",\n  \"truckLicensePlate\": \"EF-AB 123\",\n  \"weightKg\": 33340,\n  \"registrationNumber\": 19,\n  \"weighingType\": 2,\n  \"timestamp\": \"2025-11-03T11:58:12Z\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/yms/weighing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "yms", "weighing"]
+        }
+      }
+    },
+    {
+      "name": "Ungültige Daten (Validierung testen)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ymsReference\": \"\",\n  \"truckLicensePlate\": \"EF-AB 123\",\n  \"weightKg\": -100,\n  \"registrationNumber\": 15,\n  \"weighingType\": 5,\n  \"timestamp\": \"2025-11-03T07:58:12Z\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/yms/weighing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "yms", "weighing"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

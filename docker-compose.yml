@@ -1,0 +1,95 @@
+
+services:
+  # Zookeeper für Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: yms-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - yms-network
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: yms-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - yms-network
+
+  # Kafka UI für Monitoring (optional)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: yms-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - yms-network
+
+  # YMS Kafka API Application
+  yms-kafka-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yms-kafka-api
+    depends_on:
+      - kafka
+    ports:
+      - "9082:9082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      YMS_API_BASE_URL: http://yms-mock:8080
+    networks:
+      - yms-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9082/api/yms/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # YMS Mock Server (für Entwicklung/Test)
+  yms-mock:
+    image: mockserver/mockserver:5.15.0
+    container_name: yms-mock
+    ports:
+      - "8080:1080"
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/yms-mock.json
+    volumes:
+      - ./mock-config:/config
+    networks:
+      - yms-network
+
+networks:
+  yms-network:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  zookeeper-data:
